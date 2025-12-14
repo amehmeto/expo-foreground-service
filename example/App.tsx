@@ -7,7 +7,7 @@ import {
   Alert,
   Platform,
 } from 'react-native'
-import * as ForegroundService from '@amehmeto/expo-foreground-service'
+import * as ForegroundService from 'expo-foreground-service'
 
 export default function App() {
   const [isRunning, setIsRunning] = useState(false)
