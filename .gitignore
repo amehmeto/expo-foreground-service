@@ -1,0 +1,37 @@
+# OSX
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build
+build/
+
+# Expo
+.expo/
+
+# Android
+*.iml
+.gradle/
+local.properties
+*.jks
+*.keystore
+
+# iOS
+*.xcworkspace
+*.xcuserdata
+Pods/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+coverage/
+
+# Misc
+*.log

@@ -1,0 +1,25 @@
+# Exclude example app
+example/
+
+# Exclude development files
+.github/
+.husky/
+.vscode/
+.idea/
+
+# Exclude test files
+**/__tests__/
+**/*.test.ts
+**/*.spec.ts
+jest.config.js
+jest.setup.js
+coverage/
+
+# Exclude source maps
+*.map
+
+# Exclude config files not needed in package
+.eslintrc.js
+.prettierrc
+.releaserc.json
+tsconfig.json
