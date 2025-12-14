@@ -4,6 +4,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+    types: [opened, synchronize, reopened, closed]
 
 permissions:
   contents: write
@@ -11,6 +12,7 @@ permissions:
 jobs:
   typescript:
     name: TypeScript & Lint
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +42,7 @@ jobs:
 
   android:
     name: Android Build
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
 
     steps:
@@ -119,3 +122,36 @@ jobs:
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup-pr-releases:
+    name: Cleanup PR Releases
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cleanup PR build releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          echo "Cleaning up releases for PR #${PR_NUMBER}"
+
+          # List all releases matching the PR pattern
+          RELEASES=$(gh release list --limit 1000 | grep "pr-${PR_NUMBER}-" | awk '{print $1}' || true)
+
+          if [ -z "$RELEASES" ]; then
+            echo "No releases found for PR #${PR_NUMBER}"
+            exit 0
+          fi
+
+          # Delete each release
+          echo "$RELEASES" | while read -r TAG; do
+            if [ -n "$TAG" ]; then
+              echo "Deleting release: $TAG"
+              gh release delete "$TAG" --yes --cleanup-tag || true
+            fi
+          done
+
+          echo "Cleanup complete for PR #${PR_NUMBER}"

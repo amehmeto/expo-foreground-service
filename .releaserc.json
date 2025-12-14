@@ -4,19 +4,18 @@
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
     "@semantic-release/changelog",
+    "@semantic-release/npm",
     [
-      "@semantic-release/npm",
+      "@semantic-release/github",
       {
-        "npmPublish": false
+        "assets": [
+          {
+            "path": "release-assets/expo-foreground-service.apk",
+            "label": "Example App (Android APK)"
+          }
+        ]
       }
     ],
-    [
-      "@semantic-release/git",
-      {
-        "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-      }
-    ],
-    "@semantic-release/github"
+    "@semantic-release/git"
   ]
 }

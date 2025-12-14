@@ -6,8 +6,69 @@ on:
       - main
 
 jobs:
+  build-apk:
+    name: Build Example APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install example dependencies
+        working-directory: ./example
+        run: npm ci
+
+      - name: Generate Android project (expo prebuild)
+        working-directory: ./example
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build example Android app (release)
+        working-directory: ./example/android
+        run: ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: |
+          mv example/android/app/build/outputs/apk/release/app-release.apk \
+             example/android/app/build/outputs/apk/release/expo-foreground-service.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-foreground-service-release
+          path: example/android/app/build/outputs/apk/release/expo-foreground-service.apk
+          retention-days: 90
+
   release:
     name: Semantic Release
+    needs: build-apk
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -41,6 +102,12 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: expo-foreground-service-release
+          path: ./release-assets
 
       - name: Semantic Release
         env:
