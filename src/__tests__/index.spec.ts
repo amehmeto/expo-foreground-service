@@ -1,0 +1,141 @@
+// Mock react-native
+jest.mock('react-native', () => ({
+  Platform: {
+    OS: 'android',
+  },
+}))
+
+// Mock the native module
+const mockStartService = jest.fn()
+const mockStopService = jest.fn()
+const mockUpdateNotification = jest.fn()
+const mockIsRunning = jest.fn()
+const mockAddListener = jest.fn()
+
+jest.mock('../ExpoForegroundServiceModule', () => ({
+  startService: mockStartService,
+  stopService: mockStopService,
+  updateNotification: mockUpdateNotification,
+  isRunning: mockIsRunning,
+  addListener: mockAddListener,
+}))
+
+import * as ForegroundService from '../index'
+
+describe('ExpoForegroundService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('startService', () => {
+    it('calls native startService with correct config', async () => {
+      const config = {
+        channelId: 'test-channel',
+        channelName: 'Test Channel',
+        notificationTitle: 'Test Title',
+        notificationBody: 'Test Body',
+      }
+
+      await ForegroundService.startService(config)
+
+      expect(mockStartService).toHaveBeenCalledWith(
+        'test-channel',
+        'Test Channel',
+        'Test Title',
+        'Test Body',
+        'ic_notification'
+      )
+    })
+
+    it('uses custom notification icon when provided', async () => {
+      const config = {
+        channelId: 'test-channel',
+        channelName: 'Test Channel',
+        notificationTitle: 'Test Title',
+        notificationBody: 'Test Body',
+        notificationIcon: 'custom_icon',
+      }
+
+      await ForegroundService.startService(config)
+
+      expect(mockStartService).toHaveBeenCalledWith(
+        'test-channel',
+        'Test Channel',
+        'Test Title',
+        'Test Body',
+        'custom_icon'
+      )
+    })
+
+    it('passes through native module errors', async () => {
+      const error = new Error('Failed to start service')
+      mockStartService.mockRejectedValueOnce(error)
+
+      await expect(
+        ForegroundService.startService({
+          channelId: 'test',
+          channelName: 'Test',
+          notificationTitle: 'Title',
+          notificationBody: 'Body',
+        })
+      ).rejects.toThrow('Failed to start service')
+    })
+  })
+
+  describe('stopService', () => {
+    it('calls native stopService', async () => {
+      await ForegroundService.stopService()
+
+      expect(mockStopService).toHaveBeenCalled()
+    })
+  })
+
+  describe('updateNotification', () => {
+    it('calls native updateNotification with title and body', async () => {
+      await ForegroundService.updateNotification('New Title', 'New Body')
+
+      expect(mockUpdateNotification).toHaveBeenCalledWith('New Title', 'New Body')
+    })
+  })
+
+  describe('isRunning', () => {
+    it('returns true when service is running', async () => {
+      mockIsRunning.mockResolvedValueOnce(true)
+
+      const result = await ForegroundService.isRunning()
+
+      expect(result).toBe(true)
+    })
+
+    it('returns false when service is not running', async () => {
+      mockIsRunning.mockResolvedValueOnce(false)
+
+      const result = await ForegroundService.isRunning()
+
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('addServiceEventListener', () => {
+    it('registers listener and returns subscription', () => {
+      const mockRemove = jest.fn()
+      mockAddListener.mockReturnValueOnce({ remove: mockRemove })
+
+      const listener = jest.fn()
+      const subscription = ForegroundService.addServiceEventListener(listener)
+
+      expect(mockAddListener).toHaveBeenCalledWith('onServiceStateChange', listener)
+      expect(subscription).toHaveProperty('remove')
+    })
+
+    it('subscription.remove unsubscribes listener', () => {
+      const mockRemove = jest.fn()
+      mockAddListener.mockReturnValueOnce({ remove: mockRemove })
+
+      const subscription = ForegroundService.addServiceEventListener(jest.fn())
+      subscription.remove()
+
+      expect(mockRemove).toHaveBeenCalled()
+    })
+  })
+})
