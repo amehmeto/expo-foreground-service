@@ -1,12 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  Alert,
-  Platform,
-} from 'react-native'
+import { StyleSheet, Text, View, Button, Alert, Platform } from 'react-native'
 import * as ForegroundService from 'expo-foreground-service'
 
 export default function App() {
@@ -60,7 +53,28 @@ export default function App() {
 
   const handleStart = async () => {
     if (Platform.OS !== 'android') {
-      Alert.alert('Not Supported', 'Foreground services are only available on Android')
+      Alert.alert(
+        'Not Supported',
+        'Foreground services are only available on Android'
+      )
+      return
+    }
+
+    // Request notification permission using the module API
+    let granted: boolean
+    try {
+      const result = await ForegroundService.requestPermissions()
+      granted = result.granted
+    } catch (error) {
+      Alert.alert('Error', `Failed to request permissions: ${error}`)
+      return
+    }
+
+    if (!granted) {
+      Alert.alert(
+        'Permission Required',
+        'Notification permission is required to show the foreground service notification.'
+      )
       return
     }
 
@@ -90,7 +104,9 @@ export default function App() {
 
       <View style={styles.statusContainer}>
         <Text style={styles.statusLabel}>Status:</Text>
-        <Text style={[styles.statusValue, isRunning ? styles.running : styles.stopped]}>
+        <Text
+          style={[styles.statusValue, isRunning ? styles.running : styles.stopped]}
+        >
           {isRunning ? 'Running' : 'Stopped'}
         </Text>
       </View>
@@ -103,11 +119,7 @@ export default function App() {
       )}
 
       <View style={styles.buttonContainer}>
-        <Button
-          title="Start Service"
-          onPress={handleStart}
-          disabled={isRunning}
-        />
+        <Button title="Start Service" onPress={handleStart} disabled={isRunning} />
         <View style={styles.buttonSpacer} />
         <Button
           title="Stop Service"
