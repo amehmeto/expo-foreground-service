@@ -1,39 +1,6 @@
 import { useEffect, useState } from 'react'
-import {
-  StyleSheet,
-  Text,
-  View,
-  Button,
-  Alert,
-  Platform,
-  PermissionsAndroid,
-} from 'react-native'
+import { StyleSheet, Text, View, Button, Alert, Platform } from 'react-native'
 import * as ForegroundService from 'expo-foreground-service'
-
-async function requestNotificationPermission(): Promise<boolean> {
-  if (Platform.OS !== 'android') return true
-
-  // POST_NOTIFICATIONS permission is only required on Android 13+ (API 33)
-  if (Platform.Version < 33) return true
-
-  try {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      {
-        title: 'Notification Permission',
-        message:
-          'This app needs notification permission to show the foreground service notification.',
-        buttonNeutral: 'Ask Me Later',
-        buttonNegative: 'Cancel',
-        buttonPositive: 'OK',
-      }
-    )
-    return granted === PermissionsAndroid.RESULTS.GRANTED
-  } catch (err) {
-    console.warn('Failed to request notification permission:', err)
-    return false
-  }
-}
 
 export default function App() {
   const [isRunning, setIsRunning] = useState(false)
@@ -86,13 +53,16 @@ export default function App() {
 
   const handleStart = async () => {
     if (Platform.OS !== 'android') {
-      Alert.alert('Not Supported', 'Foreground services are only available on Android')
+      Alert.alert(
+        'Not Supported',
+        'Foreground services are only available on Android'
+      )
       return
     }
 
-    // Request notification permission on Android 13+
-    const hasPermission = await requestNotificationPermission()
-    if (!hasPermission) {
+    // Request notification permission using the module API
+    const { granted } = await ForegroundService.requestPermissions()
+    if (!granted) {
       Alert.alert(
         'Permission Required',
         'Notification permission is required to show the foreground service notification.'
@@ -126,7 +96,9 @@ export default function App() {
 
       <View style={styles.statusContainer}>
         <Text style={styles.statusLabel}>Status:</Text>
-        <Text style={[styles.statusValue, isRunning ? styles.running : styles.stopped]}>
+        <Text
+          style={[styles.statusValue, isRunning ? styles.running : styles.stopped]}
+        >
           {isRunning ? 'Running' : 'Stopped'}
         </Text>
       </View>
@@ -139,11 +111,7 @@ export default function App() {
       )}
 
       <View style={styles.buttonContainer}>
-        <Button
-          title="Start Service"
-          onPress={handleStart}
-          disabled={isRunning}
-        />
+        <Button title="Start Service" onPress={handleStart} disabled={isRunning} />
         <View style={styles.buttonSpacer} />
         <Button
           title="Stop Service"

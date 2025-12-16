@@ -1,12 +1,44 @@
 import type {
   ForegroundServiceConfig,
   ForegroundServiceSubscription,
+  PermissionResponse,
 } from './ExpoForegroundService.types'
 import ExpoForegroundServiceModule from './ExpoForegroundServiceModule'
 
 /**
+ * Request notification permissions required for the foreground service.
+ * On Android 13+ (API 33), this will show the system permission dialog.
+ * On older Android versions, this returns granted immediately.
+ *
+ * @returns Promise with the permission response
+ *
+ * @example
+ * ```typescript
+ * const { granted } = await requestPermissions();
+ * if (granted) {
+ *   await startService({ ... });
+ * }
+ * ```
+ */
+export function requestPermissions(): Promise<PermissionResponse> {
+  return ExpoForegroundServiceModule.requestPermissions()
+}
+
+/**
+ * Check current notification permission status without requesting.
+ *
+ * @returns Promise with the permission response
+ */
+export function checkPermissions(): Promise<PermissionResponse> {
+  return ExpoForegroundServiceModule.checkPermissions()
+}
+
+/**
  * Start the foreground service with the given configuration.
  * This will show a persistent notification while the service is running.
+ *
+ * Note: On Android 13+, you should call requestPermissions() first.
+ * The service may fail to show a notification if permission is not granted.
  *
  * @param config - Configuration for the foreground service
  * @returns Promise that resolves when the service is started
@@ -79,4 +111,8 @@ export function addServiceEventListener(
   }
 }
 
-export type { ForegroundServiceConfig, ForegroundServiceSubscription }
+export type {
+  ForegroundServiceConfig,
+  ForegroundServiceSubscription,
+  PermissionResponse,
+}

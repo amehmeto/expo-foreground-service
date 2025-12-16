@@ -11,6 +11,8 @@ const mockStopService = jest.fn()
 const mockUpdateNotification = jest.fn()
 const mockIsRunning = jest.fn()
 const mockAddListener = jest.fn()
+const mockRequestPermissions = jest.fn()
+const mockCheckPermissions = jest.fn()
 
 jest.mock('../ExpoForegroundServiceModule', () => ({
   startService: mockStartService,
@@ -18,6 +20,8 @@ jest.mock('../ExpoForegroundServiceModule', () => ({
   updateNotification: mockUpdateNotification,
   isRunning: mockIsRunning,
   addListener: mockAddListener,
+  requestPermissions: mockRequestPermissions,
+  checkPermissions: mockCheckPermissions,
 }))
 
 // eslint-disable-next-line import/first -- Import must come after jest.mock due to hoisting
@@ -143,6 +147,48 @@ describe('ExpoForegroundService', () => {
       subscription.remove()
 
       expect(mockRemove).toHaveBeenCalled()
+    })
+  })
+
+  describe('requestPermissions', () => {
+    it('returns granted when permission is granted', async () => {
+      mockRequestPermissions.mockResolvedValueOnce({
+        granted: true,
+        status: 'granted',
+      })
+
+      const result = await ForegroundService.requestPermissions()
+
+      expect(result.granted).toBe(true)
+      expect(result.status).toBe('granted')
+      expect(mockRequestPermissions).toHaveBeenCalled()
+    })
+
+    it('returns denied when permission is denied', async () => {
+      mockRequestPermissions.mockResolvedValueOnce({
+        granted: false,
+        status: 'denied',
+      })
+
+      const result = await ForegroundService.requestPermissions()
+
+      expect(result.granted).toBe(false)
+      expect(result.status).toBe('denied')
+    })
+  })
+
+  describe('checkPermissions', () => {
+    it('returns current permission status', async () => {
+      mockCheckPermissions.mockResolvedValueOnce({
+        granted: true,
+        status: 'granted',
+      })
+
+      const result = await ForegroundService.checkPermissions()
+
+      expect(result.granted).toBe(true)
+      expect(result.status).toBe('granted')
+      expect(mockCheckPermissions).toHaveBeenCalled()
     })
   })
 })

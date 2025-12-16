@@ -41,3 +41,23 @@ export interface ForegroundServiceSubscription {
    */
   remove: () => void
 }
+
+/**
+ * Permission status for the foreground service.
+ */
+export type PermissionStatus = 'granted' | 'denied' | 'undetermined'
+
+/**
+ * Result of permission check or request.
+ */
+export interface PermissionResponse {
+  /**
+   * Whether the permission is granted.
+   */
+  granted: boolean
+
+  /**
+   * The current status of the permission.
+   */
+  status: PermissionStatus
+}

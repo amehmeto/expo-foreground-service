@@ -8,7 +8,6 @@ yarn-error.log
 
 # Build
 build/
-plugin/build/
 
 # Expo
 .expo/
@@ -36,4 +35,3 @@ coverage/
 
 # Misc
 *.log
-plugin/tsconfig.tsbuildinfo
