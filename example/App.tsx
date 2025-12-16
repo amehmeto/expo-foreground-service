@@ -61,7 +61,15 @@ export default function App() {
     }
 
     // Request notification permission using the module API
-    const { granted } = await ForegroundService.requestPermissions()
+    let granted: boolean
+    try {
+      const result = await ForegroundService.requestPermissions()
+      granted = result.granted
+    } catch (error) {
+      Alert.alert('Error', `Failed to request permissions: ${error}`)
+      return
+    }
+
     if (!granted) {
       Alert.alert(
         'Permission Required',
