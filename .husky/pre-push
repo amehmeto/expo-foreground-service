@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Block direct push to main/master
 sh .husky/scripts/no-direct-push-main-master.sh
 
@@ -7,8 +9,7 @@ npm test
 # Run Kotlin unit tests
 if [ -d "example/android" ] && [ -f "example/android/gradlew" ]; then
   echo "Running Kotlin unit tests..."
-  cd example/android && ./gradlew :amehmeto-expo-foreground-service:testDebugUnitTest || exit 1
-  cd ../..
+  (cd example/android && ./gradlew :amehmeto-expo-foreground-service:testDebugUnitTest) || exit 1
 else
   echo "Android project not found, skipping Kotlin tests"
 fi

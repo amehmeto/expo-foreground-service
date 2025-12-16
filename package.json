@@ -17,10 +17,7 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
-      "npm run lint:fix --"
-    ],
-    "android/**/*.kt": [
-      "ktlint --format"
+      "npm run lint:fix"
     ],
     "*.{json,md}": [
       "prettier --write"

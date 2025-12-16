@@ -52,9 +52,12 @@ class ExpoForegroundServiceModule : Module() {
                 return@AsyncFunction
             }
 
+            val permissions = appContext.permissions
+                ?: throw Exception("Permissions manager not available")
+
             Log.d(TAG, "Requesting notification permission")
             Permissions.askForPermissionsWithPermissionsManager(
-                appContext.permissions,
+                permissions,
                 promise,
                 POST_NOTIFICATIONS_PERMISSION
             )
