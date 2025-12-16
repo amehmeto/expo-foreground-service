@@ -1,8 +1,8 @@
-import ExpoForegroundServiceModule from './ExpoForegroundServiceModule'
 import type {
   ForegroundServiceConfig,
   ForegroundServiceSubscription,
 } from './ExpoForegroundService.types'
+import ExpoForegroundServiceModule from './ExpoForegroundServiceModule'
 
 /**
  * Start the foreground service with the given configuration.
@@ -37,10 +37,7 @@ export function stopService(): Promise<void> {
  * @param body - New notification body
  * @returns Promise that resolves when the notification is updated
  */
-export function updateNotification(
-  title: string,
-  body: string
-): Promise<void> {
+export function updateNotification(title: string, body: string): Promise<void> {
   return ExpoForegroundServiceModule.updateNotification(title, body)
 }
 

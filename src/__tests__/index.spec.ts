@@ -5,7 +5,7 @@ jest.mock('react-native', () => ({
   },
 }))
 
-// Mock the native module
+// Mock the native module - must be before imports due to jest.mock hoisting
 const mockStartService = jest.fn()
 const mockStopService = jest.fn()
 const mockUpdateNotification = jest.fn()
@@ -20,6 +20,7 @@ jest.mock('../ExpoForegroundServiceModule', () => ({
   addListener: mockAddListener,
 }))
 
+// eslint-disable-next-line import/first -- Import must come after jest.mock due to hoisting
 import * as ForegroundService from '../index'
 
 describe('ExpoForegroundService', () => {
@@ -94,7 +95,10 @@ describe('ExpoForegroundService', () => {
     it('calls native updateNotification with title and body', async () => {
       await ForegroundService.updateNotification('New Title', 'New Body')
 
-      expect(mockUpdateNotification).toHaveBeenCalledWith('New Title', 'New Body')
+      expect(mockUpdateNotification).toHaveBeenCalledWith(
+        'New Title',
+        'New Body'
+      )
     })
   })
 
@@ -124,7 +128,10 @@ describe('ExpoForegroundService', () => {
       const listener = jest.fn()
       const subscription = ForegroundService.addServiceEventListener(listener)
 
-      expect(mockAddListener).toHaveBeenCalledWith('onServiceStateChange', listener)
+      expect(mockAddListener).toHaveBeenCalledWith(
+        'onServiceStateChange',
+        listener
+      )
       expect(subscription).toHaveProperty('remove')
     })
 
