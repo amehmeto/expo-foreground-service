@@ -83,6 +83,37 @@ export function isRunning(): Promise<boolean> {
 }
 
 /**
+ * Sets the callback class that will be instantiated via reflection
+ * when the foreground service starts/stops.
+ *
+ * The callback class must:
+ * - Implement the ForegroundServiceCallback interface
+ * - Have a public no-argument constructor
+ *
+ * @param className Fully qualified class name (e.g., "expo.modules.blockingoverlay.BlockingCallback")
+ * @returns Promise that resolves when the callback class is set
+ *
+ * @example
+ * ```typescript
+ * // Set callback before starting service
+ * await setCallbackClass('expo.modules.mymodule.MyCallback');
+ * await startService({ ... });
+ * ```
+ */
+export function setCallbackClass(className: string): Promise<void> {
+  return ExpoForegroundServiceModule.setCallbackClass(className)
+}
+
+/**
+ * Clears the callback class. Service will continue without callbacks.
+ *
+ * @returns Promise that resolves when the callback class is cleared
+ */
+export function clearCallbackClass(): Promise<void> {
+  return ExpoForegroundServiceModule.clearCallbackClass()
+}
+
+/**
  * Add a listener for foreground service state changes.
  *
  * @param listener - Callback function that receives state change events
