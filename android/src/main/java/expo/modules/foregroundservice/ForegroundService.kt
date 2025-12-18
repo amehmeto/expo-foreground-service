@@ -29,6 +29,24 @@ class ForegroundService : Service() {
         private var currentChannelId: String = "foreground_service"
         private var currentIconName: String = "ic_notification"
 
+        // Callback support via reflection
+        @Volatile
+        private var callbackClassName: String? = null
+
+        @Volatile
+        private var callbackInstance: ForegroundServiceCallback? = null
+
+        fun setCallbackClass(className: String) {
+            callbackClassName = className
+            Log.d(TAG, "Callback class set: $className")
+        }
+
+        fun clearCallbackClass() {
+            callbackClassName = null
+            callbackInstance = null
+            Log.d(TAG, "Callback class cleared")
+        }
+
         fun start(
             context: Context,
             channelId: String,
@@ -104,6 +122,35 @@ class ForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun instantiateAndInvokeCallback() {
+        val className = callbackClassName ?: return
+
+        try {
+            Log.d(TAG, "Instantiating callback: $className")
+            val clazz = Class.forName(className)
+
+            // Verify it implements ForegroundServiceCallback
+            if (!ForegroundServiceCallback::class.java.isAssignableFrom(clazz)) {
+                Log.e(TAG, "Class $className does not implement ForegroundServiceCallback")
+                return
+            }
+
+            val instance = clazz.getDeclaredConstructor().newInstance() as ForegroundServiceCallback
+            callbackInstance = instance
+
+            // Invoke with application context
+            instance.onServiceStarted(applicationContext)
+            Log.d(TAG, "Callback onServiceStarted invoked successfully")
+
+        } catch (e: ClassNotFoundException) {
+            Log.e(TAG, "Callback class not found: $className", e)
+        } catch (e: NoSuchMethodException) {
+            Log.e(TAG, "Callback class must have no-arg constructor: $className", e)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to instantiate callback: ${e.message}", e)
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val channelId = intent?.getStringExtra("channelId") ?: "foreground_service"
         val channelName = intent?.getStringExtra("channelName") ?: "Foreground Service"
@@ -128,6 +175,10 @@ class ForegroundService : Service() {
         }
 
         isRunning = true
+
+        // Instantiate and invoke callback via reflection
+        instantiateAndInvokeCallback()
+
         onStateChange?.invoke(true)
 
         Log.d(TAG, "Service started successfully")
@@ -135,6 +186,15 @@ class ForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        // Invoke callback before cleanup
+        try {
+            callbackInstance?.onServiceStopped()
+            Log.d(TAG, "Callback onServiceStopped invoked")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error invoking callback onServiceStopped: ${e.message}", e)
+        }
+        callbackInstance = null
+
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
         isRunning = false

@@ -13,6 +13,8 @@ const mockIsRunning = jest.fn()
 const mockAddListener = jest.fn()
 const mockRequestPermissions = jest.fn()
 const mockCheckPermissions = jest.fn()
+const mockSetCallbackClass = jest.fn()
+const mockClearCallbackClass = jest.fn()
 
 jest.mock('../ExpoForegroundServiceModule', () => ({
   startService: mockStartService,
@@ -22,6 +24,8 @@ jest.mock('../ExpoForegroundServiceModule', () => ({
   addListener: mockAddListener,
   requestPermissions: mockRequestPermissions,
   checkPermissions: mockCheckPermissions,
+  setCallbackClass: mockSetCallbackClass,
+  clearCallbackClass: mockClearCallbackClass,
 }))
 
 // eslint-disable-next-line import/first -- Import must come after jest.mock due to hoisting
@@ -189,6 +193,50 @@ describe('ExpoForegroundService', () => {
       expect(result.granted).toBe(true)
       expect(result.status).toBe('granted')
       expect(mockCheckPermissions).toHaveBeenCalled()
+    })
+  })
+
+  describe('setCallbackClass', () => {
+    it('calls native setCallbackClass with class name', async () => {
+      const className = 'expo.modules.example.TestCallback'
+
+      await ForegroundService.setCallbackClass(className)
+
+      expect(mockSetCallbackClass).toHaveBeenCalledWith(className)
+    })
+
+    it('accepts fully qualified class names', async () => {
+      const className = 'expo.modules.blockingoverlay.BlockingOverlayCallback'
+
+      await ForegroundService.setCallbackClass(className)
+
+      expect(mockSetCallbackClass).toHaveBeenCalledWith(className)
+    })
+
+    it('passes through native module errors', async () => {
+      const error = new Error('Failed to set callback class')
+      mockSetCallbackClass.mockRejectedValueOnce(error)
+
+      await expect(
+        ForegroundService.setCallbackClass('invalid.Class')
+      ).rejects.toThrow('Failed to set callback class')
+    })
+  })
+
+  describe('clearCallbackClass', () => {
+    it('calls native clearCallbackClass', async () => {
+      await ForegroundService.clearCallbackClass()
+
+      expect(mockClearCallbackClass).toHaveBeenCalled()
+    })
+
+    it('passes through native module errors', async () => {
+      const error = new Error('Failed to clear callback class')
+      mockClearCallbackClass.mockRejectedValueOnce(error)
+
+      await expect(ForegroundService.clearCallbackClass()).rejects.toThrow(
+        'Failed to clear callback class'
+      )
     })
   })
 })

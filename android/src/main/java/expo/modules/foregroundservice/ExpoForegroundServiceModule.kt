@@ -112,5 +112,15 @@ class ExpoForegroundServiceModule : Module() {
         AsyncFunction("isRunning") {
             ForegroundService.isRunning
         }
+
+        AsyncFunction("setCallbackClass") { className: String ->
+            Log.d(TAG, "Setting callback class: $className")
+            ForegroundService.setCallbackClass(className)
+        }
+
+        AsyncFunction("clearCallbackClass") {
+            Log.d(TAG, "Clearing callback class")
+            ForegroundService.clearCallbackClass()
+        }
     }
 }
