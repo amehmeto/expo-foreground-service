@@ -113,14 +113,35 @@ class ExpoForegroundServiceModule : Module() {
             ForegroundService.isRunning
         }
 
-        AsyncFunction("setCallbackClass") { className: String ->
-            Log.d(TAG, "Setting callback class: $className")
-            ForegroundService.setCallbackClass(className)
+        AsyncFunction("addCallbackClass") { className: String ->
+            val context = appContext.reactContext
+                ?: throw Exception("Context not available")
+
+            Log.d(TAG, "Adding callback class: $className")
+            ForegroundService.addCallbackClass(context, className)
         }
 
-        AsyncFunction("clearCallbackClass") {
-            Log.d(TAG, "Clearing callback class")
-            ForegroundService.clearCallbackClass()
+        AsyncFunction("removeCallbackClass") { className: String ->
+            val context = appContext.reactContext
+                ?: throw Exception("Context not available")
+
+            Log.d(TAG, "Removing callback class: $className")
+            ForegroundService.removeCallbackClass(context, className)
+        }
+
+        AsyncFunction("getCallbackClasses") {
+            val context = appContext.reactContext
+                ?: throw Exception("Context not available")
+
+            ForegroundService.getCallbackClasses(context).toList()
+        }
+
+        AsyncFunction("clearAllCallbackClasses") {
+            val context = appContext.reactContext
+                ?: throw Exception("Context not available")
+
+            Log.d(TAG, "Clearing all callback classes")
+            ForegroundService.clearAllCallbackClasses(context)
         }
     }
 }

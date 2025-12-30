@@ -7,9 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
@@ -29,22 +32,54 @@ class ForegroundService : Service() {
         private var currentChannelId: String = "foreground_service"
         private var currentIconName: String = "ic_notification"
 
-        // Callback support via reflection
-        @Volatile
-        private var callbackClassName: String? = null
+        // Multi-callback support with persistence
+        private const val PREFS_NAME = "expo_foreground_service_callbacks"
+        private const val KEY_CALLBACK_CLASSES = "callback_class_names"
 
-        @Volatile
-        private var callbackInstance: ForegroundServiceCallback? = null
+        // Thread-safe access via synchronized blocks
+        private val callbackInstances: MutableMap<String, ForegroundServiceCallback> = mutableMapOf()
 
-        fun setCallbackClass(className: String) {
-            callbackClassName = className
-            Log.d(TAG, "Callback class set: $className")
+        private val mainHandler = Handler(Looper.getMainLooper())
+
+        // SharedPreferences helpers
+        private fun getPrefs(context: Context): SharedPreferences =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        private fun loadCallbackClassNames(context: Context): Set<String> =
+            getPrefs(context).getStringSet(KEY_CALLBACK_CLASSES, emptySet()) ?: emptySet()
+
+        private fun saveCallbackClassNames(context: Context, classNames: Set<String>) {
+            getPrefs(context).edit().putStringSet(KEY_CALLBACK_CLASSES, classNames).apply()
         }
 
-        fun clearCallbackClass() {
-            callbackClassName = null
-            callbackInstance = null
-            Log.d(TAG, "Callback class cleared")
+        // Callback management methods
+        fun addCallbackClass(context: Context, className: String) {
+            val current = loadCallbackClassNames(context).toMutableSet()
+            if (current.add(className)) {
+                saveCallbackClassNames(context, current)
+                Log.d(TAG, "Callback added: $className (total: ${current.size})")
+            } else {
+                Log.d(TAG, "Callback already registered: $className")
+            }
+        }
+
+        fun removeCallbackClass(context: Context, className: String) {
+            val current = loadCallbackClassNames(context).toMutableSet()
+            if (current.remove(className)) {
+                saveCallbackClassNames(context, current)
+                synchronized(callbackInstances) { callbackInstances.remove(className) }
+                Log.d(TAG, "Callback removed: $className (remaining: ${current.size})")
+            } else {
+                Log.d(TAG, "Callback not found for removal: $className")
+            }
+        }
+
+        fun getCallbackClasses(context: Context): Set<String> = loadCallbackClassNames(context)
+
+        fun clearAllCallbackClasses(context: Context) {
+            saveCallbackClassNames(context, emptySet())
+            synchronized(callbackInstances) { callbackInstances.clear() }
+            Log.d(TAG, "All callback classes cleared")
         }
 
         fun start(
@@ -122,32 +157,88 @@ class ForegroundService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    private fun instantiateAndInvokeCallback() {
-        val className = callbackClassName ?: return
+    /**
+     * Get or create callback instance, caching for reuse.
+     */
+    private fun getOrCreateCallbackInstance(className: String): ForegroundServiceCallback? {
+        synchronized(callbackInstances) {
+            callbackInstances[className]?.let { return it }
 
-        try {
-            Log.d(TAG, "Instantiating callback: $className")
-            val clazz = Class.forName(className)
+            return try {
+                Log.d(TAG, "Instantiating callback: $className")
+                val clazz = Class.forName(className)
 
-            // Verify it implements ForegroundServiceCallback
-            if (!ForegroundServiceCallback::class.java.isAssignableFrom(clazz)) {
-                Log.e(TAG, "Class $className does not implement ForegroundServiceCallback")
+                if (!ForegroundServiceCallback::class.java.isAssignableFrom(clazz)) {
+                    Log.e(TAG, "$className doesn't implement ForegroundServiceCallback")
+                    return null
+                }
+
+                val instance = clazz.getDeclaredConstructor().newInstance() as ForegroundServiceCallback
+                callbackInstances[className] = instance
+                Log.d(TAG, "Callback instance created and cached: $className")
+                instance
+            } catch (e: ClassNotFoundException) {
+                Log.e(TAG, "Callback class not found: $className", e)
+                null
+            } catch (e: NoSuchMethodException) {
+                Log.e(TAG, "Callback class must have no-arg constructor: $className", e)
+                null
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to instantiate $className: ${e.message}", e)
+                null
+            }
+        }
+    }
+
+    /**
+     * Invoke onServiceStarted on all registered callbacks on the main thread.
+     */
+    private fun invokeCallbacksOnStart() {
+        val classNames = loadCallbackClassNames(applicationContext)
+        if (classNames.isEmpty()) {
+            Log.d(TAG, "No callback classes registered")
+            return
+        }
+
+        Log.d(TAG, "Invoking onServiceStarted for ${classNames.size} callback(s)")
+
+        classNames.forEach { className ->
+            getOrCreateCallbackInstance(className)?.let { instance ->
+                mainHandler.post {
+                    try {
+                        instance.onServiceStarted(applicationContext)
+                        Log.d(TAG, "onServiceStarted invoked for: $className")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "onServiceStarted failed for $className: ${e.message}", e)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Invoke onServiceStopped on all cached callback instances on the main thread.
+     */
+    private fun invokeCallbacksOnStop() {
+        synchronized(callbackInstances) {
+            if (callbackInstances.isEmpty()) {
+                Log.d(TAG, "No callback instances to notify of stop")
                 return
             }
 
-            val instance = clazz.getDeclaredConstructor().newInstance() as ForegroundServiceCallback
-            callbackInstance = instance
+            Log.d(TAG, "Invoking onServiceStopped for ${callbackInstances.size} callback(s)")
 
-            // Invoke with application context
-            instance.onServiceStarted(applicationContext)
-            Log.d(TAG, "Callback onServiceStarted invoked successfully")
-
-        } catch (e: ClassNotFoundException) {
-            Log.e(TAG, "Callback class not found: $className", e)
-        } catch (e: NoSuchMethodException) {
-            Log.e(TAG, "Callback class must have no-arg constructor: $className", e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to instantiate callback: ${e.message}", e)
+            callbackInstances.forEach { (className, instance) ->
+                mainHandler.post {
+                    try {
+                        instance.onServiceStopped()
+                        Log.d(TAG, "onServiceStopped invoked for: $className")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "onServiceStopped failed for $className: ${e.message}", e)
+                    }
+                }
+            }
+            // NOTE: Do NOT clear instances here - they are reused across service cycles
         }
     }
 
@@ -176,8 +267,8 @@ class ForegroundService : Service() {
 
         isRunning = true
 
-        // Instantiate and invoke callback via reflection
-        instantiateAndInvokeCallback()
+        // Invoke all registered callbacks on main thread
+        invokeCallbacksOnStart()
 
         onStateChange?.invoke(true)
 
@@ -186,14 +277,8 @@ class ForegroundService : Service() {
     }
 
     override fun onDestroy() {
-        // Invoke callback before cleanup
-        try {
-            callbackInstance?.onServiceStopped()
-            Log.d(TAG, "Callback onServiceStopped invoked")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error invoking callback onServiceStopped: ${e.message}", e)
-        }
-        callbackInstance = null
+        // Invoke all callbacks before cleanup
+        invokeCallbacksOnStop()
 
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
