@@ -83,34 +83,57 @@ export function isRunning(): Promise<boolean> {
 }
 
 /**
- * Sets the callback class that will be instantiated via reflection
+ * Adds a callback class to the list of callbacks that will be invoked
  * when the foreground service starts/stops.
+ *
+ * Multiple callbacks can be registered. Callbacks are persisted
+ * in SharedPreferences and survive app restarts.
  *
  * The callback class must:
  * - Implement the ForegroundServiceCallback interface
  * - Have a public no-argument constructor
  *
  * @param className Fully qualified class name (e.g., "expo.modules.blockingoverlay.BlockingCallback")
- * @returns Promise that resolves when the callback class is set
+ * @returns Promise that resolves when the callback class is added
  *
  * @example
  * ```typescript
- * // Set callback before starting service
- * await setCallbackClass('expo.modules.mymodule.MyCallback');
+ * // Add multiple callbacks before starting service
+ * await addCallbackClass('expo.modules.module1.Callback1');
+ * await addCallbackClass('expo.modules.module2.Callback2');
  * await startService({ ... });
  * ```
  */
-export function setCallbackClass(className: string): Promise<void> {
-  return ExpoForegroundServiceModule.setCallbackClass(className)
+export function addCallbackClass(className: string): Promise<void> {
+  return ExpoForegroundServiceModule.addCallbackClass(className)
 }
 
 /**
- * Clears the callback class. Service will continue without callbacks.
+ * Removes a callback class from the list of registered callbacks.
  *
- * @returns Promise that resolves when the callback class is cleared
+ * @param className Fully qualified class name to remove
+ * @returns Promise that resolves when the callback class is removed
  */
-export function clearCallbackClass(): Promise<void> {
-  return ExpoForegroundServiceModule.clearCallbackClass()
+export function removeCallbackClass(className: string): Promise<void> {
+  return ExpoForegroundServiceModule.removeCallbackClass(className)
+}
+
+/**
+ * Gets the list of all registered callback class names.
+ *
+ * @returns Promise that resolves with an array of registered class names
+ */
+export function getCallbackClasses(): Promise<string[]> {
+  return ExpoForegroundServiceModule.getCallbackClasses()
+}
+
+/**
+ * Clears all registered callback classes.
+ *
+ * @returns Promise that resolves when all callback classes are cleared
+ */
+export function clearAllCallbackClasses(): Promise<void> {
+  return ExpoForegroundServiceModule.clearAllCallbackClasses()
 }
 
 /**

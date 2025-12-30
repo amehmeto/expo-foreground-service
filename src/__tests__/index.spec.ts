@@ -13,8 +13,10 @@ const mockIsRunning = jest.fn()
 const mockAddListener = jest.fn()
 const mockRequestPermissions = jest.fn()
 const mockCheckPermissions = jest.fn()
-const mockSetCallbackClass = jest.fn()
-const mockClearCallbackClass = jest.fn()
+const mockAddCallbackClass = jest.fn()
+const mockRemoveCallbackClass = jest.fn()
+const mockGetCallbackClasses = jest.fn()
+const mockClearAllCallbackClasses = jest.fn()
 
 jest.mock('../ExpoForegroundServiceModule', () => ({
   startService: mockStartService,
@@ -24,8 +26,10 @@ jest.mock('../ExpoForegroundServiceModule', () => ({
   addListener: mockAddListener,
   requestPermissions: mockRequestPermissions,
   checkPermissions: mockCheckPermissions,
-  setCallbackClass: mockSetCallbackClass,
-  clearCallbackClass: mockClearCallbackClass,
+  addCallbackClass: mockAddCallbackClass,
+  removeCallbackClass: mockRemoveCallbackClass,
+  getCallbackClasses: mockGetCallbackClasses,
+  clearAllCallbackClasses: mockClearAllCallbackClasses,
 }))
 
 // eslint-disable-next-line import/first -- Import must come after jest.mock due to hoisting
@@ -196,46 +200,96 @@ describe('ExpoForegroundService', () => {
     })
   })
 
-  describe('setCallbackClass', () => {
-    it('calls native setCallbackClass with class name', async () => {
+  describe('addCallbackClass', () => {
+    it('calls native addCallbackClass with class name', async () => {
       const className = 'expo.modules.example.TestCallback'
 
-      await ForegroundService.setCallbackClass(className)
+      await ForegroundService.addCallbackClass(className)
 
-      expect(mockSetCallbackClass).toHaveBeenCalledWith(className)
+      expect(mockAddCallbackClass).toHaveBeenCalledWith(className)
     })
 
-    it('accepts fully qualified class names', async () => {
-      const className = 'expo.modules.blockingoverlay.BlockingOverlayCallback'
+    it('can add multiple callback classes', async () => {
+      await ForegroundService.addCallbackClass('expo.modules.a.Callback1')
+      await ForegroundService.addCallbackClass('expo.modules.b.Callback2')
 
-      await ForegroundService.setCallbackClass(className)
-
-      expect(mockSetCallbackClass).toHaveBeenCalledWith(className)
+      expect(mockAddCallbackClass).toHaveBeenCalledTimes(2)
+      expect(mockAddCallbackClass).toHaveBeenNthCalledWith(
+        1,
+        'expo.modules.a.Callback1'
+      )
+      expect(mockAddCallbackClass).toHaveBeenNthCalledWith(
+        2,
+        'expo.modules.b.Callback2'
+      )
     })
 
     it('passes through native module errors', async () => {
-      const error = new Error('Failed to set callback class')
-      mockSetCallbackClass.mockRejectedValueOnce(error)
+      const error = new Error('Failed to add callback class')
+      mockAddCallbackClass.mockRejectedValueOnce(error)
 
       await expect(
-        ForegroundService.setCallbackClass('invalid.Class')
-      ).rejects.toThrow('Failed to set callback class')
+        ForegroundService.addCallbackClass('invalid.Class')
+      ).rejects.toThrow('Failed to add callback class')
     })
   })
 
-  describe('clearCallbackClass', () => {
-    it('calls native clearCallbackClass', async () => {
-      await ForegroundService.clearCallbackClass()
+  describe('removeCallbackClass', () => {
+    it('calls native removeCallbackClass with class name', async () => {
+      const className = 'expo.modules.example.TestCallback'
 
-      expect(mockClearCallbackClass).toHaveBeenCalled()
+      await ForegroundService.removeCallbackClass(className)
+
+      expect(mockRemoveCallbackClass).toHaveBeenCalledWith(className)
     })
 
     it('passes through native module errors', async () => {
-      const error = new Error('Failed to clear callback class')
-      mockClearCallbackClass.mockRejectedValueOnce(error)
+      const error = new Error('Failed to remove callback class')
+      mockRemoveCallbackClass.mockRejectedValueOnce(error)
 
-      await expect(ForegroundService.clearCallbackClass()).rejects.toThrow(
-        'Failed to clear callback class'
+      await expect(
+        ForegroundService.removeCallbackClass('invalid.Class')
+      ).rejects.toThrow('Failed to remove callback class')
+    })
+  })
+
+  describe('getCallbackClasses', () => {
+    it('returns array of registered class names', async () => {
+      mockGetCallbackClasses.mockResolvedValueOnce([
+        'expo.modules.a.Callback1',
+        'expo.modules.b.Callback2',
+      ])
+
+      const result = await ForegroundService.getCallbackClasses()
+
+      expect(result).toEqual([
+        'expo.modules.a.Callback1',
+        'expo.modules.b.Callback2',
+      ])
+    })
+
+    it('returns empty array when no callbacks registered', async () => {
+      mockGetCallbackClasses.mockResolvedValueOnce([])
+
+      const result = await ForegroundService.getCallbackClasses()
+
+      expect(result).toEqual([])
+    })
+  })
+
+  describe('clearAllCallbackClasses', () => {
+    it('calls native clearAllCallbackClasses', async () => {
+      await ForegroundService.clearAllCallbackClasses()
+
+      expect(mockClearAllCallbackClasses).toHaveBeenCalled()
+    })
+
+    it('passes through native module errors', async () => {
+      const error = new Error('Failed to clear all callback classes')
+      mockClearAllCallbackClasses.mockRejectedValueOnce(error)
+
+      await expect(ForegroundService.clearAllCallbackClasses()).rejects.toThrow(
+        'Failed to clear all callback classes'
       )
     })
   })
